@@ -9,6 +9,8 @@ import fj.Digit;
 import static fj.Unit.unit;
 import fj.data.List;
 import static fj.data.List.cons_;
+
+import fj.data.Option;
 import fj.data.Stream;
 import fj.data.Validation;
 import static fj.data.Validation.success;
@@ -497,6 +499,47 @@ public final class Parser<I, A, E> {
      */
     public static <I, E> Parser<Stream<I>, I, E> satisfy(final E missing, final F<I, E> sat, final F<I, Boolean> f) {
       return satisfy(p(missing), sat, f);
+    }
+
+    /**
+     * Returns a parser that runs an element from the stream through that returns an {@link Option}.
+     * If the function returns "some" of x, the parser succeeds, producing x.
+     * If the function returns "none", the parser fails.
+     *
+     * @param missing The error if no element is available.
+     * @param sat     The error if the function returns "none".
+     * @param f       A function returning Option.
+     * @return A parser that produces an element from the stream that satisfies the given predicate, or fails.
+     */
+    public static <I, O, E> Parser<Stream<I>, O, E> satisfyOpt(final P1<E> missing, final F<I, E> sat,
+                                                               final F<I, Option<O>> f) {
+      return StreamParser.<I, E>element(missing).bind(new F<I, Parser<Stream<I>, O, E>>() {
+        @Override
+        public Parser<Stream<I>, O, E> f(final I i) {
+          return f.f(i).option(Parser.<Stream<I>, O, E>fail(sat.f(i)), new F<O, Parser<Stream<I>, O, E>>() {
+            @Override
+            public Parser<Stream<I>, O, E> f(final O o) {
+              return value(o);
+            }
+          });
+        }
+      });
+    }
+
+
+    /**
+     * Returns a parser that runs an element from the stream through that returns an {@link Option}.
+     * If the function returns "some" of x, the parser succeeds, producing x.
+     * If the function returns "none", the parser fails.
+     *
+     * @param missing The error if no element is available.
+     * @param sat     The error if the function returns "none".
+     * @param f       A function returning Option.
+     * @return A parser that produces an element from the stream that satisfies the given predicate, or fails.
+     */
+    public static <I, O, E> Parser<Stream<I>, O, E> satisfyOpt(final E missing, final F<I, E> sat,
+                                                               final F<I, Option<O>> f) {
+      return satisfyOpt(p(missing), sat, f);
     }
   }
 
